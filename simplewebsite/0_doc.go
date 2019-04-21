@@ -27,8 +27,8 @@ The content files are converted/copied as html and stored in a _to_html director
 
 Each directory containing pages "may" define a different set of templates. This way,
 different directories can show semantically different types of content, e.g:
-- web pages  (mostly static. part of website)
-- blog posts (blogs)
+  - web pages  (mostly static. part of website)
+  - blog posts (blogs)
 
 Template files always end with .page.thtml.
 
@@ -250,20 +250,20 @@ Site will be tracked via access log and google analytics.
 ---- PRODUCTION ----
 
 Nginx:
-- We *may* put nginx in front if these benefits are necessary
-  - handle ssl termination (not needed)
-  - handle showing response if/when server goes down
+  - We *may* put nginx in front if these benefits are necessary
+    - handle ssl termination (not needed)
+    - handle showing response if/when server goes down
 
-- The other possible benefits of nginx are already built in:
-  - maintains access logs
-  - rate limiting
-  - serve static files
-  - handle rewrites (forwarding)
-  - proxy for pages
-  - supervised/reload
+  - The other possible benefits of nginx are already built in:
+    - maintains access logs
+    - rate limiting
+    - serve static files
+    - handle rewrites (forwarding)
+    - proxy for pages
+    - supervised/reload
 
 In production:
-- A git hook will see updates, git fetch on the client running live site,
-  and restart the application server.
+  - A git hook will see updates, git fetch on the client running live site,
+    and restart the application server.
 
 */

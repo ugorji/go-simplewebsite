@@ -21,11 +21,9 @@ It is based off templates, markdown files and static files.
 
 Each page (webpage, blog, etc) is represented by 2 files:
 
-```
     - content: *.page.md or *.page.html for markdown, or html respectively
     - metadata: *.page.json (timestamp, author and tags).
       this metadata file is optional, as this information can be stored directly on the *.page.md file.
-```
 
 You can optionally store the metadata as the first thing in the contents
 page, in the form:
@@ -48,26 +46,24 @@ directory.
 
 Each directory containing pages "may" define a different set of templates.
 This way, different directories can show semantically different types of
-content, e.g: - web pages (mostly static. part of website) - blog posts
-(blogs)
+content, e.g:
+
+    - web pages  (mostly static. part of website)
+    - blog posts (blogs)
 
 Template files always end with .page.thtml.
 
 The expected templates:
 
-```
     - _dir   (for paths like /a/b/)
     - _page     (for paths like /a/b/c. Searched recursively.)
     - _tag      (for tag page request. exist at top level)
     - _error    (for errors. exist at top level)
-```
 
 Note that all templates are bound to "absolute" directories.
 
-```
     - _dir template for /a/b/ is got from /a/b/
     - _page template for /a/b/c is got from /a/b/ or /a/, or / recursively.
-```
 
 All templates can be found recursively up the tree, except _dir. A _dir
 template must be defined at the level. Absense of one suggests that nothing
@@ -96,7 +92,6 @@ the server.
 
 Expected Paths are (in order checked):
 
-```
     - startWith /_, /.,     : forbidden
     - match for redirect    : redirect
     - has extension         : sendFile via FileServer (images, etc)
@@ -106,7 +101,6 @@ Expected Paths are (in order checked):
     - if page               : Leaf
     - Else                  : 404
     - default               : Leaf
-```
 
 In terms of the code structure, a OS process runs an engine. That engine
 holds a number of server objects, one for each base uri that the engine
@@ -124,44 +118,34 @@ server. A shell script will auto-restart the server if it dies.
 
 Note that a tag is:
 
-```
     - all lower case
     - no spaces
     - words separated by dashes
-```
 
 A function called "_title" is added to the template funcmap to convert to
 title case.
 
 Primary tags can be defined. These tags are:
 
-```
     - shown on the home page (under recent)
     - show atom subscribe links to them
-```
 
 ## The Server will support
 
-```
     - max concurrent requests
     - access logging
     - signals: HUP to reload. TERM to graceful shutdown. USR1 to reopen logs.
-```
 
 Caching is supported. To fully support it:
 
-```
     - Always send max-age header to 1 week (site will be updated weekly)
     - Send Last-Modified header.
     - Support Conditional GET for If-Modified-Since.
-```
 
 The utopia model for determining last-mod-time and whether to send 304 is:
 
-```
     - keep track of lastMod time for templates, and timestamp of pages
     - use the most recent one as the last-mod-time for cache control
-```
 
 However, for now, we just use last reload time for sending last-mod-time and
 checking if to return 304.
@@ -206,10 +190,8 @@ Support: configurable dynamic prefix (ie make /d/ configurable).
 Support generating static site. It basically generates the full site,
 including:
 
-```
     - links for directories, feeds and tags (index.html)
     - pages
-```
 
 ## Support: Serving static gzip files
 
@@ -263,11 +245,9 @@ A sample replacement file looks like:
 
 NOTE:
 
-```
     - Always prefix your templates, replacements, etc with _ or something
       so they are sorted before your actual pages.
       This way, they are always parsed first before pages may need them.
-```
 
 ## Exported Package API
 
