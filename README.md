@@ -185,7 +185,7 @@ If you configure the extension for a page, you can access the page using
 that extension and it will get served. Note that you can still access the
 page without the extension (that still works fine).
 
-Support: configurable dynamic prefix (ie make /d/ configurable).
+Support: configurable dynamic prefix (ie make /d/ configurable)
 
 Support generating static site. It basically generates the full site,
 including:
@@ -201,17 +201,17 @@ serveFile will look for NAME.gz, and if it finds it, decipher the content
 type from the regular file, and serve the gzip version, setting the
 appropriate headers so that the gzip pipeline will skip it.
 
-Support: Users adding their own dynamic functions (for expansion).
+Support: Users adding their own dynamic functions (for expansion)
 
 Allow the registration of other dynamic paths, without going deep into this
 file.
 
-Support: Server Template.
+## Support: Server Template
 
 Users should not have to repeat themselves if most parts of their Server
 configuration look the same.
 
-Support: watch/notification for live reload of changed files.
+## Support: watch/notification for live reload of changed files
 
 The engine will watch all server directories, and micro-reload changed files
 in there. It also watches the config file to reload it if change.
