@@ -26,7 +26,7 @@ import (
 	"github.com/ugorji/go-common/logging"
 	"github.com/ugorji/go-common/pool"
 	"github.com/ugorji/go-common/util"
-	"github.com/ugorji/go-web"
+	"github.com/ugorji/go-serverapp/web"
 )
 
 // Chrome only shows it nicely if application/xml, not application/atom+xml.

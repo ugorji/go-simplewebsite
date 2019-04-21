@@ -15,7 +15,7 @@ import (
 
 	"github.com/ugorji/go-common/logging"
 	"github.com/ugorji/go-common/util"
-	"github.com/ugorji/go-web"
+	"github.com/ugorji/go-serverapp/web"
 	// "github.com/ugorji/go-common/zerror"
 )
 

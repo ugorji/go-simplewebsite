@@ -1,4 +1,6 @@
 /*
+Package simplewebsite provides a fast and flexible static site generator or dynamic file server.
+
 simplewebsite is a modern, lean, fast website engine for typical websites,
 with mostly static files and some dynamic content.
 
