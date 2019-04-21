@@ -114,8 +114,9 @@ The utopia model for determining last-mod-time and whether to send 304 is:
 However, for now, we just use last reload time for sending last-mod-time and
 checking if to return 304.
 
-Support getting pages matching a tag and a base path:
-  E.g. show pages under /blog which have tag: technology.
+Support getting pages matching a tag and a base path
+
+E.g. show pages under /blog which have tag: technology.
 
 To make a page featured on the home page, add the tag: x-featured.
 
@@ -123,12 +124,13 @@ Note that the attributes: name, title and summary are not got from the page meta
 Instead, the name is got from the name of the contents file, and the title
 is the first header in the file, and summary is the first 2 paragraphs.
 
-Support users: A user can author a page. Users can be defined on a Server.
+Support users: A user can author a page. Users can be defined on a Server
+
 If a user is not found on a server, users defined on the engine are searched.
 Each server has a default user, who is assumed to be the author of any page
 for which an author is not defined.
 
-Support forms: A form is basically a collection of parameters.
+Support forms: A form is basically a collection of parameters
 
 When filled and submitted, an email containing the form is sent to the user.
 The from and to are in the parameters x-from and x-to respectively.
@@ -139,7 +141,7 @@ and put all the parameters you need in there.
 Typically, use this via AJAX since we only use the response code to indicate
 success (or response code of 500 and body to indicate failure).
 
-Support extensions for pages: This allows for static site generation.
+Support extensions for pages: This allows for static site generation
 
 If you configure the extension for a page, you can access the page using
 that extension and it will get served. Note that you can still access the page
@@ -147,7 +149,8 @@ without the extension (that still works fine).
 
 Support: configurable dynamic prefix (ie make /d/ configurable)
 
-Support generating static site. 
+Support generating static site
+
 It basically generates the full site, including:
   - links for directories, feeds and tags (index.html)
   - pages
