@@ -26,9 +26,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ugorji/go-fsnotify"
+	"github.com/ugorji/go-serverapp/fsnotify"
 	"github.com/ugorji/go-common/logging"
-	"github.com/ugorji/go-common/zerror"
+	"github.com/ugorji/go-common/errorutil"
 )
 
 // Only handle pages that start and end with alphanumeric characters.
@@ -134,7 +134,7 @@ func (w *watcher) handleEventList(events []*fsnotify.WatchEvent) {
 				switch {
 				case raw.Mask&syscall.IN_DELETE_SELF != 0, raw.Mask&syscall.IN_MOVE_SELF != 0:
 					logging.Trace(nil, "Watch: config file moved/deleted: %s", fpath)
-					w.e.fatalErrChan <- zerror.String("Config File moved/deleted")
+					w.e.fatalErrChan <- errorutil.String("Config File moved/deleted")
 				default:
 					logging.Trace(nil, "Watch: configFile. Reload: %s", fpath)
 					fullReload = true

@@ -24,8 +24,8 @@ import (
 	"github.com/russross/blackfriday"
 	"github.com/ugorji/go-common/feed"
 	"github.com/ugorji/go-common/logging"
+	"github.com/ugorji/go-common/osutil"
 	"github.com/ugorji/go-common/pool"
-	"github.com/ugorji/go-common/util"
 	"github.com/ugorji/go-serverapp/web"
 )
 
@@ -286,7 +286,7 @@ func (s *Server) runInit(es *engineCfg) (err error) {
 		}
 	}
 	s.pagesDir = s.BaseDir
-	if _, _, err = util.ChkDir(s.pagesDir); err != nil {
+	if _, _, err = osutil.ChkDir(s.pagesDir); err != nil {
 		return
 	}
 
@@ -333,15 +333,15 @@ func (s *Server) reload() (err error) {
 			return
 		}
 	}
-	if err = util.MkDir(s.runtimeDir); err != nil {
+	if err = osutil.MkDir(s.runtimeDir); err != nil {
 		return
 	}
 
-	if err = util.MkDir(s.pagesToHtmlDir); err != nil {
+	if err = osutil.MkDir(s.pagesToHtmlDir); err != nil {
 		return
 	}
 
-	if err = util.MkDir(s.staticDir); err != nil {
+	if err = osutil.MkDir(s.staticDir); err != nil {
 		return
 	}
 	if len(s.sortedPages) != 0 {
@@ -443,7 +443,7 @@ func (s *Server) fileLoad(zwg *sync.WaitGroup, zchan chan *Page, fpath string,
 	}
 	if !pageRegexp.MatchString(fpath) {
 		// as-is file. copy to static directory.
-		if err = util.CopyFile(filepath.Join(s.staticDir, relpath), fpath, true); err != nil {
+		if err = osutil.CopyFile(filepath.Join(s.staticDir, relpath), fpath, true); err != nil {
 			return
 		}
 		logging.Trace(nil, "%s: Copied to static dir: %s", s.name, fpath)
@@ -502,7 +502,7 @@ func (s *Server) fileLoad(zwg *sync.WaitGroup, zchan chan *Page, fpath string,
 		} else {
 			fnAddPage(relpath[:len(relpath)-10], false)
 		}
-		// util.CopyFiles(filepath.Join(s.pagesToHtmlDir, relpath), fpath)
+		// osutil.CopyFiles(filepath.Join(s.pagesToHtmlDir, relpath), fpath)
 	}
 	return
 
@@ -1138,13 +1138,13 @@ func (s *Server) serveFile(w http.ResponseWriter, fpath string, acceptsGzip bool
 					logging.Trace(nil, "%s: Sending gzip file: ctype: %s, path: %s",
 						s.name, ctype, fpath2)
 					w.Header().Set("Content-Encoding", "gzip")
-					err = util.CopyFileToWriter(w, fpath2)
+					err = osutil.CopyFileToWriter(w, fpath2)
 					return
 				}
 			}
 		}
 	}
-	err = util.CopyFileToWriter(w, fpath)
+	err = osutil.CopyFileToWriter(w, fpath)
 	return
 }
 
@@ -1256,7 +1256,7 @@ func (s *Server) sendError(p *tmplParam) {
 func (s *Server) SendPageContent(w io.Writer, pageName string) string {
 	fpath := filepath.Join(s.pagesToHtmlDir, pageName+".html")
 	logging.Trace(nil, "%s: SendPageContent: pageName: %s, fpath: %s", s.name, pageName, fpath)
-	util.CopyFileToWriter(w, fpath)
+	osutil.CopyFileToWriter(w, fpath)
 	return ""
 }
 
@@ -1414,7 +1414,7 @@ func (s *Server) pageMarkdownToHtml(htmlPath, mdPath string, sdir *Dir) (p *Page
 }
 
 func (s *Server) pageHtmlToHtml(htmlPath, srcHtmlPath string, sdir *Dir) (p *Page, err error) {
-	// zerr = util.CopyFiles(htmlPath, srcHtmlPath, true)
+	// zerr = osutil.CopyFiles(htmlPath, srcHtmlPath, true)
 	zb, err := ioutil.ReadFile(srcHtmlPath)
 	if err != nil {
 		return
@@ -1516,7 +1516,7 @@ func (s *Server) pageBytesToHtml(htmlPath string, zb []byte, sdir *Dir) (p *Page
 	}
 	// logging.Trace(nil, "Page: |||| Title: %s |||| Summary: %s", p.title, p.summary)
 	logging.Trace(nil, "%s: Page: %#v", s.name, p)
-	err = util.WriteFile(htmlPath, zb, true)
+	err = osutil.WriteFile(htmlPath, zb, true)
 	return
 }
 
@@ -1557,7 +1557,7 @@ func relativePath(parent, fpath string) (relpath string, err error) {
 func writeStaticFile(fpath string, buf []byte, doGzip bool, p *pool.T) (err error) {
 	// fmt.Printf(">>>>>> file: %s\n", fpath)
 
-	if err = util.WriteFile(fpath, buf, true); err != nil || !doGzip {
+	if err = osutil.WriteFile(fpath, buf, true); err != nil || !doGzip {
 		return
 	}
 	fpath2 := fpath + ".gz"

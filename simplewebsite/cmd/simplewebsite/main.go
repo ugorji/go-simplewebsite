@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/ugorji/go-simplewebsite"
+	"github.com/ugorji/go-simplewebsite/simplewebsite"
 )
 
 func main() {

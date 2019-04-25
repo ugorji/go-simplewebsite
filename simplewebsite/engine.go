@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+
 	// "encoding/base64"
 	"compress/gzip"
 	"path/filepath"
@@ -14,9 +15,9 @@ import (
 	"time"
 
 	"github.com/ugorji/go-common/logging"
-	"github.com/ugorji/go-common/util"
+	"github.com/ugorji/go-common/osutil"
 	"github.com/ugorji/go-serverapp/web"
-	// "github.com/ugorji/go-common/zerror"
+	// "github.com/ugorji/go-common/errorutil"
 )
 
 type DynamicPathFn func(s *Server, w http.ResponseWriter, r *http.Request) error
@@ -123,7 +124,7 @@ func (e *Engine) reload() (err error) {
 
 	if ecfg0.PidFile != ecfg.PidFile {
 		zpid := []byte(strconv.Itoa(os.Getpid()) + "\n")
-		if err = util.WriteFile(ecfg.PidFile, zpid, false); err != nil {
+		if err = osutil.WriteFile(ecfg.PidFile, zpid, false); err != nil {
 			return
 		}
 	}
@@ -245,7 +246,7 @@ func (e *Engine) Close() (err error) {
 // If necessary, support closing pipes.
 // Right now, all pipes used should not be closed explicitly.
 // func (e *engineState) closePipes() error {
-// 	var merr zerror.Multi
+// 	var merr errorutil.Multi
 // 	for _, p := range e.pipes {
 // 		switch x := p.(type) {
 // 		case *web.GzipPipe:
