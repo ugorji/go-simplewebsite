@@ -121,8 +121,8 @@ E.g. show pages under /blog which have tag: technology.
 To make a page featured on the home page, add the tag: x-featured.
 
 Note that the attributes: name, title and summary are not got from the page metadata.
-Instead, the name is got from the name of the contents file, and the title
-is the first header in the file, and summary is the first 2 paragraphs.
+Instead, the name is got from the name of the contents file, the title
+is the first header in the file, and summary is the first paragraph.
 
 Support users: A user can author a page. Users can be defined on a Server
 

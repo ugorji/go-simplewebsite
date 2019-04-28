@@ -33,7 +33,15 @@ import (
 // However, for correctness, we use application/atom+xml
 const atomContentType = "application/atom+xml"
 const errTag = "simplewebsite: "
-const doContinueIfStaticFileNotExist = true
+
+// const doContinueIfStaticFileNotExist = true
+
+var pageTimeFmts = [...]string{
+	time.RFC3339,
+	"2006-01-02T15:04:05Z07:00",
+	"2006-01-02T15:04:05",
+	"2006-01-02",
+}
 
 const mailMsgTmplstr = `
 Subject: Message from {{ .R.Host }}
@@ -55,7 +63,7 @@ var (
 
 	// headers may have an ID, if using a TOC. Handle that here.
 	pageTitleRe   = regexp.MustCompile(`<[hH][1-6](?:.*?)>(.+?)</[hH][1-6]>`)
-	paraParaRe    = regexp.MustCompile(`(?s)<[pP]>(.+?)</[pP]>`)
+	paraParaRe    = regexp.MustCompile(`(?s)<[pP]>(.+?)</?[pP]>`)
 	htmlTagOrNlRe = regexp.MustCompile(`(?s)</?[a-zA-Z]+.*?/?>|\n`)
 	// pageMetaRe = regexp.MustCompile(`<!--\s*?([0-9TZ:-]{24,28})((?:\s*?,\s*?(?:[a-zA-Z0-9-]+))*)\s*?-->`)
 	// may not be first line, in case of TOC, etc.
@@ -1476,8 +1484,7 @@ func (s *Server) pageBytesToHtml(htmlPath string, zb []byte, sdir *Dir) (p *Page
 				str[1] >= '0' && str[1] <= '9' &&
 				str[2] >= '0' && str[2] <= '9' &&
 				str[3] >= '0' && str[3] <= '9' {
-				tt1, err1 := time.Parse(time.RFC3339, str)
-				if err1 == nil {
+				if tt1 := parsePageTime(str); !tt1.IsZero() {
 					p.modTimes = append(p.modTimes, tt1)
 					continue
 				}
@@ -1511,7 +1518,7 @@ func (s *Server) pageBytesToHtml(htmlPath string, zb []byte, sdir *Dir) (p *Page
 		zbn = zbn[zbs[1]:]
 	}
 	var summ []byte
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 1; i++ { // TODO: was 2, but 1 easier to work with / reason with / show
 		zbs = paraParaRe.FindSubmatchIndex(zbn)
 		if len(zbs) <= 2 {
 			break
@@ -1544,6 +1551,17 @@ func toTitle(s string) string {
 	s = strings.Replace(s, "-", " ", -1)
 	s = strings.Title(s)
 	return s
+}
+
+func parsePageTime(s string) (t time.Time) {
+	var err error
+	for _, f := range pageTimeFmts {
+		t, err = time.Parse(f, s)
+		if err == nil {
+			return
+		}
+	}
+	return
 }
 
 func formatTime(t time.Time) string {
