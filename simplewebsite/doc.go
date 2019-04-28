@@ -65,7 +65,7 @@ At startup time, we walk the directory, read in *.page.* files and snapshot the 
 To recreate the server when files change, just reload or restart the server.
 
 Expected Paths are (in order checked):
-  - startWith /_, /.,     : forbidden
+  - startWith /_, /.,     : forbidden (except if explicitly permitted)
   - match for redirect    : redirect
   - has extension         : sendFile via FileServer (images, etc)
   - startWith dynamicPathPfx : dynamic: e.g. /d/tag, etc

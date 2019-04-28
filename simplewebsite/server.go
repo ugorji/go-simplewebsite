@@ -136,6 +136,7 @@ type serverCfg struct {
 	BaseDir              string
 	DefaultUser          string // default author
 	Forbidden            string
+	Permitted            string
 	DynamicPathPfx       string // defaults to /d/ if not set
 	PageExt              string // must be blank, or .xxxxx (all lower case)
 	StaticIndexFile      string
@@ -150,6 +151,7 @@ type Server struct {
 	serverCfg
 
 	forbidden      *regexp.Regexp
+	permitted      *regexp.Regexp
 	rewrites       map[*regexp.Regexp]string
 	pagesDir       string
 	pagesToHtmlDir string
@@ -231,6 +233,9 @@ func (s *Server) runInit(es *engineCfg) (err error) {
 		if s1.Forbidden != "" && s.Forbidden == "" {
 			s.Forbidden = s1.Forbidden
 		}
+		if s1.Permitted != "" && s.Permitted == "" {
+			s.Permitted = s1.Permitted
+		}
 		if s1.DynamicPathPfx != "" && s.DynamicPathPfx == "" {
 			s.DynamicPathPfx = s1.DynamicPathPfx
 		}
@@ -271,6 +276,9 @@ func (s *Server) runInit(es *engineCfg) (err error) {
 	}
 	if s.Forbidden != "" {
 		s.forbidden = regexp.MustCompile(s.Forbidden)
+	}
+	if s.Permitted != "" {
+		s.permitted = regexp.MustCompile(s.Permitted)
 	}
 	if s.BaseDir, err = filepath.Abs(s.BaseDir); err != nil {
 		return
@@ -903,7 +911,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	tp := tmplParam{Server: s, Path: p, Writer: w}
 	// if len(p) == 0 || (len(p) == 2 && p[0] == '/' && (p[1] == '_' || p[1] == '.')) {
-	if s.forbidden != nil && s.forbidden.MatchString(p) {
+	if s.forbidden != nil && s.forbidden.MatchString(p) &&
+		(s.permitted == nil || !s.permitted.MatchString(p)) {
 		err = fmt.Errorf("%sInvalid/Forbidden Path: %s%s", errTag, r.Host, p)
 		tp.Error, tp.ErrorCode = err.Error(), 404
 		s.sendError(&tp)
@@ -1110,12 +1119,14 @@ func (s *Server) serveFile(w http.ResponseWriter, fpath string, acceptsGzip bool
 	// This causes issues with BootStrap.
 	// We consequently check and explicitly write the content type ourselves.
 	fext := filepath.Ext(fpath)
-	// println("fpath: ", fpath, ", ext: ", fext)
+	// println("fpath: ", fpath, ", ext: '"+fext+"'")
 	switch fext {
 	case ".css":
 		w.Header().Set("Content-Type", "text/css")
 	case ".js":
 		w.Header().Set("Content-Type", "text/javascript")
+	case ".json":
+		w.Header().Set("Content-Type", "application/json")
 	}
 
 	// check for, and serve gzip file if exist
