@@ -57,13 +57,25 @@ MESSAGE
 
 var mailMsgTmpl *template.Template
 
+// culled from https://developer.mozilla.org/en-US/docs/Web/HTML/Block-level_elements#Elements
+// HTML 3 block elements: https://www.w3.org/TR/2018/SPSD-html32-20180315/#block
+// HTML 4 new elements: http://www.htmlhelp.com/reference/html40/new.html#elements
+//
+// skip top-level blocks that contain no text e.g. img, object etc
+const _html3BlockTagStartRe = `p|div|blockquote|dl|ol|ul|h1|h2|h3|h4|h5|h6|pre|table|center|isindex|form|hr`
+const _html4BlockTagStartRe = `fieldset|frame|frameset|iframe|noframes|script|noscript`
+const _html5BlockTagStartRe = `section|address|header|footer|dir|menu|nav|main`
+
+const _paraRe = `(?si)<p>(.+?)(<(?:/p|` + _html3BlockTagStartRe + `|` + _html4BlockTagStartRe + `|` + _html5BlockTagStartRe + `)>)\s*`
+
 var (
 	fsRegexp   = regexp.MustCompile(`\.[a-zA-Z0-9]{2,4}$`)
 	pageRegexp = regexp.MustCompile(`\.page\.(thtml|html|md|json|rtxt|txt)$`)
 
 	// headers may have an ID, if using a TOC. Handle that here.
 	pageTitleRe   = regexp.MustCompile(`<[hH][1-6](?:.*?)>(.+?)</[hH][1-6]>`)
-	paraParaRe    = regexp.MustCompile(`(?s)<[pP]>(.+?)</?[pP]>`)
+	paraParaRe    = regexp.MustCompile(_paraRe)
+	paraPara2Re   = regexp.MustCompile(`^` + _paraRe)
 	htmlTagOrNlRe = regexp.MustCompile(`(?s)</?[a-zA-Z]+.*?/?>|\n`)
 	// pageMetaRe = regexp.MustCompile(`<!--\s*?([0-9TZ:-]{24,28})((?:\s*?,\s*?(?:[a-zA-Z0-9-]+))*)\s*?-->`)
 	// may not be first line, in case of TOC, etc.
@@ -1332,7 +1344,7 @@ func (s *Server) atomFeed(pages []*Page, schemeAndHost, namePrefix, tag string) 
 		f.Entries[i] = &feed.Entry{
 			Title:    p.Title(),
 			Link:     schemeAndHost + "/" + p.name,
-			Desc:     p.summary,
+			Desc:     p.summary.String(),
 			DescType: feed.TextPlain,
 			PubDate:  p.CreateTime(),
 			LastMod:  p.LastModTime(),
@@ -1463,10 +1475,10 @@ func (s *Server) pageBytesToHtml(htmlPath string, zb []byte, sdir *Dir) (p *Page
 	}
 
 	// We have to use FindXXXIndex here, so we can truncate zbn each time a match is found.
-	zbs := pageMetaRe.FindSubmatchIndex(zbn)
-	if len(zbs) > 2 {
-		// allstr := pageMetaSepRe.Split(string(zbn[zbs[2]:zbs[3]]), -1)
-		allstr := pageMeta1Re.FindAllString(string(zbn[zbs[2]:zbs[3]]), -1)
+	q := pageMetaRe.FindSubmatchIndex(zbn)
+	if len(q) > 2 {
+		// allstr := pageMetaSepRe.Split(string(zbn[q[2]:q[3]]), -1)
+		allstr := pageMeta1Re.FindAllString(string(zbn[q[2]:q[3]]), -1)
 		for _, str := range allstr {
 			if len(str) > 0 && (str[0] == '"' || str[0] == '\'') {
 				str = str[1 : len(str)-1]
@@ -1509,30 +1521,31 @@ func (s *Server) pageBytesToHtml(htmlPath string, zb []byte, sdir *Dir) (p *Page
 
 			p.Tags = append(p.Tags, str)
 		}
-		zbn = zbn[zbs[1]:]
+		zbn = zbn[q[1]:]
 	}
-	zbs = pageTitleRe.FindSubmatchIndex(zbn)
-	// fmt.Printf("@@@@@@@@@@@ pageTitleRe: FindSubmatchIndex: %s, len: %v: %v\n", htmlPath, len(zbs), zbs)
-	if len(zbs) > 2 {
-		p.title = html.UnescapeString(string(htmlTagOrNlRe.ReplaceAll(zbn[zbs[2]:zbs[3]], repl)))
-		zbn = zbn[zbs[1]:]
+
+	q = pageTitleRe.FindSubmatchIndex(zbn)
+	// fmt.Printf("@@@@@@@@@@@ pageTitleRe: FindSubmatchIndex: %s, len: %v: %v\n", htmlPath, len(q), q)
+	if len(q) > 2 {
+		p.title = html.UnescapeString(string(htmlTagOrNlRe.ReplaceAll(zbn[q[2]:q[3]], repl)))
+		zbn = zbn[q[1]:]
 	}
-	var summ []byte
-	for i := 0; i < 1; i++ { // TODO: was 2, but 1 easier to work with / reason with / show
-		zbs = paraParaRe.FindSubmatchIndex(zbn)
-		if len(zbs) <= 2 {
-			break
+
+	q = paraParaRe.FindSubmatchIndex(zbn)
+	if len(q) > 2 {
+		p.summary[0] = html.UnescapeString(string(htmlTagOrNlRe.ReplaceAll(zbn[q[2]:q[3]], repl)))
+		closeTag := zbn[q[4]:q[5]]
+		if len(closeTag) > 3 && closeTag[1] == '/' { // we had a </p> end - trim it out
+			zbn = zbn[q[1]:]
+		} else {
+			zbn = zbn[q[3]:]
 		}
-		if i == 1 {
-			summ = append(summ, ' ')
+		q = paraPara2Re.FindSubmatchIndex(zbn)
+		if len(q) > 2 {
+			p.summary[1] = html.UnescapeString(string(htmlTagOrNlRe.ReplaceAll(zbn[q[2]:q[3]], repl)))
 		}
-		summ = append(summ, zbn[zbs[2]:zbs[3]]...)
-		zbn = zbn[zbs[1]:]
 	}
-	if len(summ) > 0 {
-		p.summary = html.UnescapeString(string(htmlTagOrNlRe.ReplaceAll(summ, repl)))
-	}
-	// logging.Trace(nil, "Page: |||| Title: %s |||| Summary: %s", p.title, p.summary)
+
 	logging.Trace(nil, "%s: Page: %#v", s.name, p)
 	err = osutil.WriteFile(htmlPath, zb, true)
 	return
@@ -1573,7 +1586,7 @@ func relativePath(parent, fpath string) (relpath string, err error) {
 	if err != nil {
 		return
 	}
-	// cannot use if relpath[0] == '.', because it fails for paths with names starting with dot.
+	// cannot use if relpath[0] == '.', as it fails for path names starting with dot
 	if relpath == "." {
 		relpath = ""
 	}
@@ -1584,8 +1597,6 @@ func relativePath(parent, fpath string) (relpath string, err error) {
 }
 
 func writeStaticFile(fpath string, buf []byte, doGzip bool, p *pool.T) (err error) {
-	// fmt.Printf(">>>>>> file: %s\n", fpath)
-
 	if err = osutil.WriteFile(fpath, buf, true); err != nil || !doGzip {
 		return
 	}
@@ -1602,8 +1613,3 @@ func writeStaticFile(fpath string, buf []byte, doGzip bool, p *pool.T) (err erro
 	p.Put(gw)
 	return
 }
-
-// TODO:
-//   support page-level TOC, to allow a non-TOC site have TOC on some pages.
-//   - this will require reading/parsing markdown for directives,
-//     before generating the HTML from markdown.

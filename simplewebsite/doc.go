@@ -122,7 +122,8 @@ To make a page featured on the home page, add the tag: x-featured.
 
 Note that the attributes: name, title and summary are not got from the page metadata.
 Instead, the name is got from the name of the contents file, the title
-is the first header in the file, and summary is the first paragraph.
+is the first header in the file, and summary is the first paragraph,
+or first 2 paragraphs if the second paragraph directly follows the first.
 
 Support users: A user can author a page. Users can be defined on a Server
 

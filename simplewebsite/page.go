@@ -8,13 +8,26 @@ import (
 
 // Page can be read from a json file, so we should also keep some top-level fields
 
+// Summary is the first paragraph,
+// or first 2 paragraphs if the second paragraph directly follows the first.
+type Summary [2]string
+
+func (s Summary) ToString(sep string) string {
+	if s[1] == "" {
+		return s[0]
+	}
+	return s[0] + sep + s[1]
+}
+
+func (s Summary) String() string { return s.ToString(" ") }
+
 type Page struct {
 	Username string
 	Tags     []string
 	modTimes []time.Time // time.RFC3339: 2006-01-02T15:04:05Z07:00
 	name     string
 	title    string
-	summary  string
+	summary  Summary
 	server   *Server
 	toc      bool
 }
@@ -92,7 +105,11 @@ func (p *Page) Title() string {
 }
 
 func (p *Page) Summary() string {
-	return p.summary
+	return p.summary.String()
+}
+
+func (p *Page) SummaryWithSep(sep string) string {
+	return p.summary.ToString(sep)
 }
 
 type sortedPagesRecent []*Page
