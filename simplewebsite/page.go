@@ -112,6 +112,17 @@ func (p *Page) SummaryWithSep(sep string) string {
 	return p.summary.ToString(sep)
 }
 
+func (p *Page) SummaryForIndex(index int, refAnchor bool) (s string) {
+	if index >= 2 {
+		return
+	}
+	s = p.summary[index]
+	if s != "" && refAnchor {
+		s = (string)(uriRe.ReplaceAll([]byte(s), []byte(`<a href="$0">$0</a>`)))
+	}
+	return
+}
+
 type sortedPagesRecent []*Page
 
 func (x sortedPagesRecent) Len() int           { return len(x) }

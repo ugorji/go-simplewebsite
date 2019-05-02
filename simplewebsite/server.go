@@ -83,6 +83,10 @@ var (
 	// pageMetaSepRe = regexp.MustCompile(`[\s,]+`)
 	pageMeta1Re = regexp.MustCompile(`"[^"]*"|'[^']*'|[^\s,]+`)
 	// pageTagRe = regexp.MustCompile(`\s*?,\s*?([a-zA-Z0-9-]+)`)
+
+	// See https://en.wikipedia.org/wiki/Uniform_Resource_Identifier  TODO: fix this
+	// URI = scheme:[//authority]path[?query][#fragment] ... where authority = [userinfo@]host[:port]
+	uriRe = regexp.MustCompile(`(?i)[\w-.+]+:` + `(?://[\w-:@.\[\]]+/)?` + `(?:[\w-+@&;/]+)` + `(?:\?[\w-+&=;/]*)?` + `(?:#[\w-+&;?=/]*)?`)
 )
 
 var (
