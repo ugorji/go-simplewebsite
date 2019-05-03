@@ -11,6 +11,8 @@ import (
 	"github.com/ugorji/go-common/logging"
 )
 
+var log *logging.Logger // set at init
+
 type Runner struct {
 	Config         string
 	LogFiles       string
@@ -36,12 +38,20 @@ func (r *Runner) ParseFlags(args []string) (err error) {
 // Users can pass a set of dynamic functions, which are checked for a match
 // if a dynamic path is seen and not matching one of tag, feed or message.
 func (r *Runner) Run() (err error) {
-	if err = logging.AddLoggers(strings.Split(r.LogFiles, ","), nil,
-		r.MinLogLevel, 16<<10, 1*time.Second, false); err != nil {
+	if err = logging.Open(1*time.Second, 16<<10, 0); err != nil {
 		return
 	}
+	names := strings.Split(r.LogFiles, ",")
+	for _, n := range names {
+		if err = logging.AddHandler(n, logging.NewHandlerWriter(nil, n, logging.Human, nil)); err != nil {
+			return
+		}
+	}
+	logging.AddLogger("", r.MinLogLevel, nil, names)
+	log = logging.PkgLogger()
 
-	logging.Trace(nil, "Starting up")
+	// runtimeutil.P(">>>>>>>>>>> simplewebsite.Run ...: nil? %v \n", log == nil)
+	log.Debug(nil, "Starting up")
 
 	e, err := newEngine(r.Config, r.DynamicPathFns)
 	if err != nil {
@@ -60,7 +70,7 @@ func (r *Runner) Run() (err error) {
 	// var w *watcher
 	// if r.Watch {
 	// 	if w, err = newWatcher(e, 256, 512); err != nil { // 256 batches, 512 inotify events
-	// 		logging.Error2(nil, err, "Error starting watch service")
+	// 		log.Error2(nil, err, "Error starting watch service")
 	// 	}
 	// 	if w != nil {
 	// 		w.reload()
@@ -74,29 +84,29 @@ func (r *Runner) Run() (err error) {
 		select {
 		case err = <-e.fatalErrChan:
 			if err != nil {
-				logging.Error2(nil, err, "Fatal Error - WILL SHUT DOWN!!")
-				logging.Severe(nil, "SHUTTING DOWN ...")
+				log.Error2(nil, err, "Fatal Error - WILL SHUT DOWN!!")
+				log.Severe(nil, "SHUTTING DOWN ...")
 				e.Close()
 				return
 			}
 		case sig := <-sigChan:
 			switch sig {
 			case syscall.SIGHUP:
-				logging.Info(nil, "Signal HUP received: will reopen logs and reload engine")
-				logging.Error2(nil, logging.Reopen(), "Error reopening logging")
+				log.Info(nil, "Signal HUP received: will reopen logs and reload engine")
+				log.Error2(nil, logging.Reopen(), "Error reopening logging")
 				if zerr := e.reload(); zerr != nil {
-					logging.Error2(nil, zerr, "Reload Err: %v", zerr)
+					log.Error2(nil, zerr, "Reload Err: %v", zerr)
 				}
 			case syscall.SIGUSR1:
-				logging.Info(nil, "Signal USR1 received: will reopen logs")
-				logging.Error2(nil, logging.Reopen(), "Error reopening logging")
-				logging.Error2(nil, e.accessLogger.Reopen(), "Error reopening webserver logs")
+				log.Info(nil, "Signal USR1 received: will reopen logs")
+				log.Error2(nil, logging.Reopen(), "Error reopening logging")
+				log.Error2(nil, e.accessLogger.Reopen(), "Error reopening webserver logs")
 			case syscall.SIGTERM:
-				logging.Info(nil, "Signal TERM received: will close engine.")
+				log.Info(nil, "Signal TERM received: will close engine.")
 				if w != nil {
-					logging.Error2(nil, w.Close(), "Error closing watcher")
+					log.Error2(nil, w.Close(), "Error closing watcher")
 				}
-				logging.Error2(nil, e.Close(), "Error closing engine")
+				log.Error2(nil, e.Close(), "Error closing engine")
 				return
 			}
 		}

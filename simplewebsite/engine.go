@@ -134,7 +134,7 @@ func (e *Engine) reload() (err error) {
 			return
 		}
 	}
-	logging.Info(nil, "Engine Initialized in %v", time.Since(e.reloadTime))
+	log.Info(nil, "Engine Initialized in %v", time.Since(e.reloadTime))
 
 	if ecfg.ListenAddress == "" {
 		err = fmt.Errorf("%sEngine: No Listen Address Configured", errTag)
@@ -195,7 +195,7 @@ func (e *Engine) reload() (err error) {
 		go func() {
 			if closeOldWebSvr {
 				if zerr := oldWebsvr.Close(); zerr != nil {
-					logging.Error2(nil, zerr, "Error closing old webserver at %s", ecfg0.ListenAddress)
+					log.Error2(nil, zerr, "Error closing old webserver at %s", ecfg0.ListenAddress)
 				}
 			}
 			if closeOldAccessLogger {
@@ -208,7 +208,7 @@ func (e *Engine) reload() (err error) {
 
 	if e.Watch {
 		if err = newWatcher(e); err != nil { // 256 batches, 512 inotify events
-			logging.Error2(nil, err, "Error starting watch service")
+			log.Error2(nil, err, "Error starting watch service")
 			return
 		}
 	}
@@ -217,7 +217,7 @@ func (e *Engine) reload() (err error) {
 	// 		return
 	// 	}
 	// }
-	logging.Info(nil, "Engine Now Listening at: %s", e.ListenAddress)
+	log.Info(nil, "Engine Now Listening at: %s", e.ListenAddress)
 	// err = http.ListenAndServe(e.ListenAddress, e)
 	return
 }
@@ -293,13 +293,13 @@ L1:
 	}
 
 	if svr == nil {
-		logging.Error(nil, "No servers found for Host: %s, URL: %v, RequestURI: %v, Headers: %v",
+		log.Error(nil, "No servers found for Host: %s, URL: %v, RequestURI: %v, Headers: %v",
 			r.Host, r.URL, r.RequestURI, r.Header)
 		http.Error(w, "No servers found for Host: "+r.Host, 500)
 		return
 	}
 	if !svr.inited {
-		logging.Error(nil, "Server Not Initialized. Host: %s, URL: %v, RequestURI: %v, Headers: %v",
+		log.Error(nil, "Server Not Initialized. Host: %s, URL: %v, RequestURI: %v, Headers: %v",
 			r.Host, r.URL, r.RequestURI, r.Header)
 		http.Error(w, "Server Not Initialized", 500)
 		return

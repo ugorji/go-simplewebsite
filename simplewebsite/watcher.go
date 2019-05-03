@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/ugorji/go-common/logging"
 )
 
 func init() {
@@ -79,10 +78,10 @@ func newWatcher(e *Engine) error {
 			case <-w.ec:
 				break L
 			case <-tt.C:
-				// logging.Trace(nil, "watch: checking to see if any server reload needed: num servers to reload = %d", len(w.ch))
+				// log.Debug(nil, "watch: checking to see if any server reload needed: num servers to reload = %d", len(w.ch))
 				w.mu.RLock()
 				for k := range w.ch {
-					logging.Debug(nil, "watch: reloading server with name: %s due to changed file", k.name)
+					log.Debug(nil, "watch: reloading server with name: %s due to changed file", k.name)
 					ww := w.fw[k]
 					ww.Close()
 					delete(w.fw, k)
@@ -116,21 +115,21 @@ func (w *watcher) reload(s *Server) error {
 		if info.Mode().IsDir() {
 			err := ww.Add(fpath)
 			if err == nil {
-				logging.Debug(nil, "watch: Added path: %s to server: %s", fpath, s.name)
+				log.Debug(nil, "watch: Added path: %s to server: %s", fpath, s.name)
 			} else {
-				logging.Error2(nil, err, "Watch: Error adding path: %s", fpath)
+				log.Error2(nil, err, "Watch: Error adding path: %s", fpath)
 			}
 		}
 		return nil
 	}
 	if err := filepath.Walk(filepath.Clean(s.BaseDir), walkFn); err != nil {
-		logging.Error2(nil, err, "Watch: Error walking server basedir: %s", s.BaseDir)
+		log.Error2(nil, err, "Watch: Error walking server basedir: %s", s.BaseDir)
 	}
 
 	go func() {
 		for e := range ww.Events {
 			base := filepath.Base(e.Name)
-			logging.Trace(nil, "Found an event: %v, matching: %v", e, watchRe.MatchString(base))
+			log.Debug(nil, "Found an event: %v, matching: %v", e, watchRe.MatchString(base))
 			if !watchRe.MatchString(base) {
 				continue
 			}

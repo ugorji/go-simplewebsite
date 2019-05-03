@@ -58,9 +58,9 @@ func newWatcher(e *Engine) (err error) {
 // When called, the watcher will remove all its watches,
 // then add watches for config file, and all directories under servers.
 func (w *watcher) reload() error {
-	logging.Debug(nil, "Reloading Watch")
-	logging.Error2(nil, w.w.Clear(), "Watch: Error clearing")
-	logging.Error2(nil, w.w.Add(w.e.configFile, 0), "Watch: Error adding config file: %s", w.e.configFile)
+	log.Debug(nil, "Reloading Watch")
+	log.Error2(nil, w.w.Clear(), "Watch: Error clearing")
+	log.Error2(nil, w.w.Add(w.e.configFile, 0), "Watch: Error adding config file: %s", w.e.configFile)
 	w.ps = make(map[string]*Server)
 	for i := range w.e.Servers {
 		w.reloadServer(&w.e.Servers[i])
@@ -69,7 +69,7 @@ func (w *watcher) reload() error {
 }
 
 func (w *watcher) clear(silentErr bool) error {
-	logging.Error2(nil, w.w.Remove(w.e.configFile), "Watch: Error removing config file: %s", w.e.configFile)
+	log.Error2(nil, w.w.Remove(w.e.configFile), "Watch: Error removing config file: %s", w.e.configFile)
 	for i := range w.e.Servers {
 		w.clearServer(&w.e.Servers[i], silentErr)
 	}
@@ -86,7 +86,7 @@ func (w *watcher) clearServer(s *Server, silentErr bool) error {
 			err := w.w.Remove(k)
 			// sometimes, events come after file deleted, so no need spitting out spurious errors
 			if err != nil && !silentErr {
-				logging.Error2(nil, err, "Watch: %s: Error removing path: %s", s.name, k)
+				log.Error2(nil, err, "Watch: %s: Error removing path: %s", s.name, k)
 			}
 			delete(w.ps, k)
 		}
@@ -99,7 +99,7 @@ func (w *watcher) reloadServer(s *Server) {
 		return w.serverWalkFn(s, fpath, info, inerr)
 	}
 	if err := filepath.Walk(s.BaseDir, walkFn); err != nil {
-		logging.Error2(nil, err, "Watch: Error walking server basedir: %s", s.BaseDir)
+		log.Error2(nil, err, "Watch: Error walking server basedir: %s", s.BaseDir)
 	}
 }
 
@@ -109,7 +109,7 @@ func (w *watcher) serverWalkFn(s *Server, fpath string, info os.FileInfo, inerr 
 		if err := w.w.Add(fpath, 0); err == nil {
 			w.ps[fpath] = s
 		} else {
-			logging.Error2(nil, err, "Watch: Error adding path: %s", fpath)
+			log.Error2(nil, err, "Watch: Error adding path: %s", fpath)
 		}
 	}
 	return nil
@@ -133,21 +133,21 @@ func (w *watcher) handleEventList(events []*fsnotify.WatchEvent) {
 			case fpath == w.e.configFile:
 				switch {
 				case raw.Mask&syscall.IN_DELETE_SELF != 0, raw.Mask&syscall.IN_MOVE_SELF != 0:
-					logging.Trace(nil, "Watch: config file moved/deleted: %s", fpath)
+					log.Debug(nil, "Watch: config file moved/deleted: %s", fpath)
 					w.e.fatalErrChan <- errorutil.String("Config File moved/deleted")
 				default:
-					logging.Trace(nil, "Watch: configFile. Reload: %s", fpath)
+					log.Debug(nil, "Watch: configFile. Reload: %s", fpath)
 					fullReload = true
 				}
 			case raw.Mask&syscall.IN_MOVE_SELF != 0 && s != nil:
 				// if s==nil, then event already handled via IN_MOVE_FROM/TO
-				logging.Trace(nil, "Watch: watched dir moved: %s", fpath)
+				log.Debug(nil, "Watch: watched dir moved: %s", fpath)
 				w.w.Remove(fpath)
 				delete(w.ps, fpath)
 				sReloadEvents[s] = true
 			case raw.Mask&syscall.IN_DELETE_SELF != 0 && s != nil:
 				// if s==nil, then event already handled via IN_DELETE
-				logging.Trace(nil, "Watch: watched dir deleted: %s", fpath)
+				log.Debug(nil, "Watch: watched dir deleted: %s", fpath)
 				w.w.Remove(fpath)
 				delete(w.ps, fpath)
 				// sReloadEvents[s] = true
@@ -176,7 +176,7 @@ func (w *watcher) handleEventList(events []*fsnotify.WatchEvent) {
 					delete(w.ps, fpath2)
 					sReloadEvents[s] = true
 				default:
-					// logging.Trace(nil, "Watch: dir moved to/from watch dir: %s", fpath)
+					// log.Debug(nil, "Watch: dir moved to/from watch dir: %s", fpath)
 					sReloadEvents[s] = true
 				}
 			case raw.Mask&syscall.IN_CLOSE_WRITE != 0,
@@ -186,7 +186,7 @@ func (w *watcher) handleEventList(events []*fsnotify.WatchEvent) {
 				// a file. move, delete or write.
 				if watchRe.MatchString(fname) && !sReloadEvents[s] { // don't do incrememtal if we already reloading server
 					isDelete := raw.Mask&syscall.IN_CLOSE_WRITE == 0
-					logging.Trace(nil, "Watch: file. IsDelete: %v, for: %s", isDelete, fpath2)
+					log.Debug(nil, "Watch: file. IsDelete: %v, for: %s", isDelete, fpath2)
 					s.fileWatch(fpath2, false, isDelete)
 					if _, ok := pageEvents[s]; !ok && pageRegexp.MatchString(fpath2) {
 						pageEvents[s] = true
@@ -197,12 +197,12 @@ func (w *watcher) handleEventList(events []*fsnotify.WatchEvent) {
 	}
 	// only regenerate pages if a *.page.* change event found
 	if fullReload {
-		logging.Debug(nil, "Watch: Full Reload Triggered")
+		log.Debug(nil, "Watch: Full Reload Triggered")
 		w.clear(true)
 		if err = w.e.reload(); err == nil {
 			w.reload()
 		} else {
-			logging.Error2(nil, err, "Error reloading engine. All watches cleared.")
+			log.Error2(nil, err, "Error reloading engine. All watches cleared.")
 		}
 	} else {
 		// if reloading server, then don't create static files again
@@ -211,10 +211,10 @@ func (w *watcher) handleEventList(events []*fsnotify.WatchEvent) {
 			// 	continue
 			// }
 			delete(pageEvents, s)
-			logging.Debug(nil, "Watch: Reload server: %s", s.name)
+			log.Debug(nil, "Watch: Reload server: %s", s.name)
 			w.clearServer(s, true)
 			if err = s.reload(); err != nil {
-				logging.Error2(nil, err, "Error reloading server: %s. Watches cleared.", s.name)
+				log.Error2(nil, err, "Error reloading server: %s. Watches cleared.", s.name)
 			}
 			w.reloadServer(s)
 		}
@@ -222,8 +222,8 @@ func (w *watcher) handleEventList(events []*fsnotify.WatchEvent) {
 			// if s == nil {
 			// 	continue
 			// }
-			logging.Debug(nil, "Watch: Create Static Files for server: %s", s.name)
-			logging.Error2(nil, s.createStaticFiles(true), "Error creating static site: %s", s.name)
+			log.Debug(nil, "Watch: Create Static Files for server: %s", s.name)
+			log.Error2(nil, s.createStaticFiles(true), "Error creating static site: %s", s.name)
 		}
 	}
 }

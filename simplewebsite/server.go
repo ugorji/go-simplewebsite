@@ -23,7 +23,6 @@ import (
 
 	"github.com/russross/blackfriday"
 	"github.com/ugorji/go-common/feed"
-	"github.com/ugorji/go-common/logging"
 	"github.com/ugorji/go-common/osutil"
 	"github.com/ugorji/go-common/pool"
 	"github.com/ugorji/go-serverapp/web"
@@ -469,7 +468,7 @@ func (s *Server) fileLoad(zwg *sync.WaitGroup, zchan chan *Page, fpath string,
 	if isDir {
 		if _, ok := s.dirs[relpath]; !ok {
 			s.dirs[relpath] = &Dir{name: relpath}
-			logging.Trace(nil, "%s: Added dir: %s", s.name, fpath)
+			log.Debug(nil, "%s: Added dir: %s", s.name, fpath)
 		}
 		return
 	}
@@ -478,7 +477,7 @@ func (s *Server) fileLoad(zwg *sync.WaitGroup, zchan chan *Page, fpath string,
 		if err = osutil.CopyFile(filepath.Join(s.staticDir, relpath), fpath, true); err != nil {
 			return
 		}
-		logging.Trace(nil, "%s: Copied to static dir: %s", s.name, fpath)
+		log.Debug(nil, "%s: Copied to static dir: %s", s.name, fpath)
 		return
 	}
 
@@ -502,9 +501,9 @@ func (s *Server) fileLoad(zwg *sync.WaitGroup, zchan chan *Page, fpath string,
 				sort.Sort(sortedPagesRecent(s.sortedPages))
 			}
 			if md {
-				logging.Trace(nil, "%s: convert markdown to html: %s", s.name, fpath)
+				log.Debug(nil, "%s: convert markdown to html: %s", s.name, fpath)
 			} else {
-				logging.Trace(nil, "%s: as-is copy html file: %s", s.name, fpath)
+				log.Debug(nil, "%s: as-is copy html file: %s", s.name, fpath)
 			}
 		}
 		if zwg != nil {
@@ -637,14 +636,14 @@ func (s *Server) createStaticFiles(lock bool) (err error) {
 		defer s.mu.Unlock()
 	}
 
-	logging.Trace(nil, "%s: Creating static files", s.name)
+	log.Debug(nil, "%s: Creating static files", s.name)
 
 	var num int
 
 	gwPool := web.NewGzipWriterPool(gzip.BestCompression, 4, len(s.sortedPages)/2)
 	t0 := time.Now()
 	defer func() {
-		logging.Info(nil, "%s: Created %d static file pairs (regular and gzip), in %v, with error: %v",
+		log.Info(nil, "%s: Created %d static file pairs (regular and gzip), in %v, with error: %v",
 			s.name, num, time.Since(t0), err)
 		gwPool.Drain()
 	}()
@@ -657,7 +656,7 @@ func (s *Server) createStaticFiles(lock bool) (err error) {
 	for _, dir := range s.dirs {
 		dirs = append(dirs, dir.name)
 	}
-	logging.Trace(nil, "%s: Static Site dirs: %v", s.name, dirs)
+	log.Debug(nil, "%s: Static Site dirs: %v", s.name, dirs)
 	for i, dir := range dirs {
 		tp.Path = dir + "/"
 		if t, _ := s.findTemplate(tp.Path, "_dir"); t != nil {
@@ -750,7 +749,7 @@ func (s *Server) readTemplate(fpath string) (err error, stop bool) {
 
 	if _, err = z.Parse(string(zb)); err != nil {
 		// errors parsing templates should fail startup/reload
-		logging.Error(nil, "error parsing: %s", fpath)
+		log.Error(nil, "error parsing: %s", fpath)
 		stop = true
 		return
 	}
@@ -759,7 +758,7 @@ func (s *Server) readTemplate(fpath string) (err error, stop bool) {
 		d.tmpls = make(map[string]*template.Template)
 	}
 	d.tmpls[filepath.Base(fpath)] = z
-	logging.Trace(nil, "%s: Parsed template: tmplpath: %s, from: %s", s.name, dir, fpath)
+	log.Debug(nil, "%s: Parsed template: tmplpath: %s, from: %s", s.name, dir, fpath)
 	return
 }
 
@@ -796,7 +795,7 @@ func (s *Server) readPageMetadata(fpath string) (err error) {
 	s.initPageMeta(&zp)
 	s.pages[zp.name] = &zp
 	s.sortedPages = append(s.sortedPages, &zp)
-	logging.Trace(nil, "%s: Loaded metadata for page: %s, from: %s", s.name, zp.name, fpath)
+	log.Debug(nil, "%s: Loaded metadata for page: %s, from: %s", s.name, zp.name, fpath)
 	return
 }
 
@@ -889,7 +888,7 @@ func (s *Server) replacements1(dir *Dir, m map[*regexp.Regexp]string, m2 map[str
 func (s *Server) template(dir *Dir) *template.Template {
 	// this template creation NOT a problem. takes 32us -> 150us (avg 50us. once each request)
 	// t0 := time.Now()
-	// defer func() { logging.Debug(nil, "Template took: %v", time.Since(t0)) }()
+	// defer func() { log.Debug(nil, "Template took: %v", time.Since(t0)) }()
 	// println(">>> Calling s.Template")
 	t := template.New("")
 	t.Funcs(s.tmplFn)
@@ -1009,7 +1008,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var fi os.FileInfo
 	if sortaStatic {
 		p2 := filepath.Join(s.staticDir, p)
-		logging.Trace(nil, "%s: attempt to serve static file for path: %s ==> %s", s.name, p, p2)
+		log.Debug(nil, "%s: attempt to serve static file for path: %s ==> %s", s.name, p, p2)
 		hasSlash := len(p) > 0 && p[len(p)-1] == '/'
 		p3 := p2
 		if hasSlash {
@@ -1026,7 +1025,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						return
 					}
 				} else {
-					logging.Trace(nil, "%s: http redirecting to %s (no trailing slash)", s.name, p[:len(p)-1])
+					log.Debug(nil, "%s: http redirecting to %s (no trailing slash)", s.name, p[:len(p)-1])
 					http.Redirect(w, r, p[:len(p)-1], 301)
 					return
 				}
@@ -1035,7 +1034,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					p3 = filepath.Join(p3, "/", s.StaticIndexFile)
 					fi, err = os.Stat(p3)
 					if err == nil {
-						logging.Trace(nil, "%s: http redirecting to %s/ (add trailing slash)", s.name, p)
+						log.Debug(nil, "%s: http redirecting to %s/ (add trailing slash)", s.name, p)
 						http.Redirect(w, r, p+"/", 301)
 						return
 					}
@@ -1045,7 +1044,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-		logging.Trace(nil, "%s: FileNotExist in static directory", s.name)
+		log.Debug(nil, "%s: FileNotExist in static directory", s.name)
 	}
 
 	if isDynPath {
@@ -1092,7 +1091,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if (s.PageExt == "" || !strings.HasSuffix(p, s.PageExt)) &&
 		fsRegexp.MatchString(p) &&
 		!pageRegexp.MatchString(p) {
-		// logging.Trace(nil, "Matched static file")
+		// log.Debug(nil, "Matched static file")
 		s.handleServeFileErr(&tp, s.serveFile(w, filepath.Join(s.BaseDir, p), acceptsGzip))
 		// s.fsHdlr.ServeHTTP(w, r)
 		return
@@ -1170,7 +1169,7 @@ func (s *Server) serveFile(w http.ResponseWriter, fpath string, acceptsGzip bool
 						ctype = http.DetectContentType(bs[:num])
 						w.Header().Set("Content-Type", ctype)
 					}
-					logging.Trace(nil, "%s: Sending gzip file: ctype: %s, path: %s",
+					log.Debug(nil, "%s: Sending gzip file: ctype: %s, path: %s",
 						s.name, ctype, fpath2)
 					w.Header().Set("Content-Encoding", "gzip")
 					err = osutil.CopyFileToWriter(w, fpath2)
@@ -1225,7 +1224,7 @@ func (s *Server) findTemplate(path, name string) (t *template.Template, err erro
 	if t == nil {
 		err = fmt.Errorf("%sNo template found for name: %s, path: %s in server: %s",
 			errTag, name, path, s.Title)
-		// logging.Debug(nil, "Find Template Error: %v", err)
+		// log.Debug(nil, "Find Template Error: %v", err)
 	}
 	return
 }
@@ -1241,7 +1240,7 @@ func (s *Server) findExecTmpl(p *tmplParam, name string, sendError bool) (err er
 		p.Error, p.ErrorCode = err.Error(), 404
 		s.sendError(p)
 	}
-	// logging.Debug(nil, "Time to run branch: %s: %v", tp.Path, time.Since(t0))
+	// log.Debug(nil, "Time to run branch: %s: %v", tp.Path, time.Since(t0))
 	return
 }
 
@@ -1258,13 +1257,13 @@ func (s *Server) sendError2(w http.ResponseWriter, code int, message string, par
 }
 
 func (s *Server) sendError(p *tmplParam) {
-	logging.Error(nil, "[%d] %v (%s)", p.ErrorCode, p.Error, p.Path)
+	log.Error(nil, "[%d] %v (%s)", p.ErrorCode, p.Error, p.Path)
 	wr, _ := p.Writer.(web.ResponseWriter)
 	if wr != nil && wr.IsHeaderWritten() {
 		return
 	}
 	t, _ := s.findTemplate(p.Path, "_error")
-	// logging.Debug(nil, "sendError: template: %v", t)
+	// log.Debug(nil, "sendError: template: %v", t)
 	hw, _ := p.Writer.(http.ResponseWriter)
 	if hw != nil {
 		hw.Header().Del("Last-Modified")
@@ -1290,7 +1289,7 @@ func (s *Server) sendError(p *tmplParam) {
 
 func (s *Server) SendPageContent(w io.Writer, pageName string) string {
 	fpath := filepath.Join(s.pagesToHtmlDir, pageName+".html")
-	logging.Trace(nil, "%s: SendPageContent: pageName: %s, fpath: %s", s.name, pageName, fpath)
+	log.Debug(nil, "%s: SendPageContent: pageName: %s, fpath: %s", s.name, pageName, fpath)
 	osutil.CopyFileToWriter(w, fpath)
 	return ""
 }
@@ -1488,7 +1487,7 @@ func (s *Server) pageBytesToHtml(htmlPath string, zb []byte, sdir *Dir) (p *Page
 				str = str[1 : len(str)-1]
 			}
 			// if strings.HasSuffix(htmlPath, "test.html") {
-			// 	logging.Debug(nil, "test.page.md pagemetas: %d: %v", i, str)
+			// 	log.Debug(nil, "test.page.md pagemetas: %d: %v", i, str)
 			// }
 			if str == "" || str == "-" {
 				continue
@@ -1550,7 +1549,7 @@ func (s *Server) pageBytesToHtml(htmlPath string, zb []byte, sdir *Dir) (p *Page
 		}
 	}
 
-	logging.Trace(nil, "%s: Page: %#v", s.name, p)
+	log.Debug(nil, "%s: Page: %#v", s.name, p)
 	err = osutil.WriteFile(htmlPath, zb, true)
 	return
 }
