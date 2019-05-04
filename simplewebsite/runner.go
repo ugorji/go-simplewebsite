@@ -6,12 +6,11 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/ugorji/go-common/logging"
 )
 
-var log *logging.Logger // set at init
+var log = logging.PkgLogger()
 
 type Runner struct {
 	Config         string
@@ -38,7 +37,7 @@ func (r *Runner) ParseFlags(args []string) (err error) {
 // Users can pass a set of dynamic functions, which are checked for a match
 // if a dynamic path is seen and not matching one of tag, feed or message.
 func (r *Runner) Run() (err error) {
-	if err = logging.Open(1*time.Second, 16<<10, 0); err != nil {
+	if err = logging.Reopen(); err != nil {
 		return
 	}
 	names := strings.Split(r.LogFiles, ",")
@@ -48,7 +47,6 @@ func (r *Runner) Run() (err error) {
 		}
 	}
 	logging.AddLogger("", r.MinLogLevel, nil, names)
-	log = logging.PkgLogger()
 
 	// runtimeutil.P(">>>>>>>>>>> simplewebsite.Run ...: nil? %v \n", log == nil)
 	log.Debug(nil, "Starting up")
