@@ -1289,7 +1289,7 @@ func (s *Server) sendError(p *tmplParam) {
 
 func (s *Server) SendPageContent(w io.Writer, pageName string) string {
 	fpath := filepath.Join(s.pagesToHtmlDir, pageName+".html")
-	log.Debug(nil, "%s: SendPageContent: pageName: %s, fpath: %s", s.name, pageName, fpath)
+	log.Debug(nil, "%s: page: %s, fpath: %s", s.name, pageName, fpath)
 	osutil.CopyFileToWriter(w, fpath)
 	return ""
 }
