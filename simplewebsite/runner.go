@@ -13,43 +13,29 @@ import (
 var log = logging.PkgLogger()
 
 type Runner struct {
+	Log            logging.Flags
 	Config         string
-	LogFiles       string
-	MinLogLevelStr string
-	MinLogLevel    logging.Level
 	DynamicPathFns map[string]DynamicPathFn
 	Watch          bool // Deprecated
 }
 
-func (r *Runner) ParseFlags(args []string) (err error) {
-	flags := flag.NewFlagSet("simplewebsite", flag.ContinueOnError)
+func (r *Runner) Flags(flags *flag.FlagSet) {
+	r.Log.Flags(flags)
 	flags.StringVar(&r.Config, "c", "config.json", "Server Configuration")
-	flags.StringVar(&r.LogFiles, "l", "<stderr>", "Log file")
-	flags.StringVar(&r.MinLogLevelStr, "v", "INFO", "Log Level Threshold")
 	flags.BoolVar(&r.Watch, "w", false, "(Deprecated and ignored) Watch/Incremental Reload on changes")
-	if err = flags.Parse(args); err == nil {
-		r.MinLogLevel = logging.ParseLevel(r.MinLogLevelStr)
-	}
-	return
 }
 
 // Run will create an engine off the config file and possibly watch it for real-time uploads.
 // Users can pass a set of dynamic functions, which are checked for a match
 // if a dynamic path is seen and not matching one of tag, feed or message.
 func (r *Runner) Run() (err error) {
-	if err = logging.Reopen(); err != nil {
+	names := strings.Split(r.Log.Files, ",")
+	if err = logging.BasicInit(names, r.Log.Config); err != nil {
 		return
 	}
-	names := strings.Split(r.LogFiles, ",")
-	for _, n := range names {
-		if err = logging.AddHandler(n, logging.NewHandlerWriter(nil, n, logging.Human, nil)); err != nil {
-			return
-		}
-	}
-	logging.AddLogger("", r.MinLogLevel, nil, names)
 
 	// runtimeutil.P(">>>>>>>>>>> simplewebsite.Run ...: nil? %v \n", log == nil)
-	log.Debug(nil, "Starting up")
+	log.Notice(nil, "Starting up")
 
 	e, err := newEngine(r.Config, r.DynamicPathFns)
 	if err != nil {
@@ -68,7 +54,7 @@ func (r *Runner) Run() (err error) {
 	// var w *watcher
 	// if r.Watch {
 	// 	if w, err = newWatcher(e, 256, 512); err != nil { // 256 batches, 512 inotify events
-	// 		log.Error2(nil, err, "Error starting watch service")
+	// 		log.IfError(nil, err, "Error starting watch service")
 	// 	}
 	// 	if w != nil {
 	// 		w.reload()
@@ -82,7 +68,7 @@ func (r *Runner) Run() (err error) {
 		select {
 		case err = <-e.fatalErrChan:
 			if err != nil {
-				log.Error2(nil, err, "Fatal Error - WILL SHUT DOWN!!")
+				log.IfError(nil, err, "Fatal Error - WILL SHUT DOWN!!")
 				log.Severe(nil, "SHUTTING DOWN ...")
 				e.Close()
 				return
@@ -91,20 +77,20 @@ func (r *Runner) Run() (err error) {
 			switch sig {
 			case syscall.SIGHUP:
 				log.Info(nil, "Signal HUP received: will reopen logs and reload engine")
-				log.Error2(nil, logging.Reopen(), "Error reopening logging")
+				log.IfError(nil, logging.Reopen(), "Error reopening logging")
 				if zerr := e.reload(); zerr != nil {
-					log.Error2(nil, zerr, "Reload Err: %v", zerr)
+					log.IfError(nil, zerr, "Reload Err: %v", zerr)
 				}
 			case syscall.SIGUSR1:
 				log.Info(nil, "Signal USR1 received: will reopen logs")
-				log.Error2(nil, logging.Reopen(), "Error reopening logging")
-				log.Error2(nil, e.accessLogger.Reopen(), "Error reopening webserver logs")
+				log.IfError(nil, logging.Reopen(), "Error reopening logging")
+				log.IfError(nil, e.accessLogger.Reopen(), "Error reopening webserver logs")
 			case syscall.SIGTERM:
 				log.Info(nil, "Signal TERM received: will close engine.")
 				if w != nil {
-					log.Error2(nil, w.Close(), "Error closing watcher")
+					log.IfError(nil, w.Close(), "Error closing watcher")
 				}
-				log.Error2(nil, e.Close(), "Error closing engine")
+				log.IfError(nil, e.Close(), "Error closing engine")
 				return
 			}
 		}
@@ -115,8 +101,12 @@ func (r *Runner) Run() (err error) {
 
 func Main(args []string) (err error) {
 	var r Runner
-	if err = r.ParseFlags(args); err != nil {
+
+	flags := flag.NewFlagSet("simplewebsite", flag.ContinueOnError)
+	r.Flags(flags)
+	if err = flags.Parse(args); err != nil {
 		return
 	}
+
 	return r.Run()
 }

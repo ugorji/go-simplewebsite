@@ -134,7 +134,7 @@ func (e *Engine) reload() (err error) {
 			return
 		}
 	}
-	log.Info(nil, "Engine Initialized in %v", time.Since(e.reloadTime))
+	log.Notice(nil, "Engine Initialized in %v", time.Since(e.reloadTime))
 
 	if ecfg.ListenAddress == "" {
 		err = fmt.Errorf("%sEngine: No Listen Address Configured", errTag)
@@ -195,7 +195,7 @@ func (e *Engine) reload() (err error) {
 		go func() {
 			if closeOldWebSvr {
 				if zerr := oldWebsvr.Close(); zerr != nil {
-					log.Error2(nil, zerr, "Error closing old webserver at %s", ecfg0.ListenAddress)
+					log.IfError(nil, zerr, "Error closing old webserver at %s", ecfg0.ListenAddress)
 				}
 			}
 			if closeOldAccessLogger {
@@ -208,7 +208,7 @@ func (e *Engine) reload() (err error) {
 
 	if e.Watch {
 		if err = newWatcher(e); err != nil { // 256 batches, 512 inotify events
-			log.Error2(nil, err, "Error starting watch service")
+			log.IfError(nil, err, "Error starting watch service")
 			return
 		}
 	}
@@ -217,7 +217,7 @@ func (e *Engine) reload() (err error) {
 	// 		return
 	// 	}
 	// }
-	log.Info(nil, "Engine Now Listening at: %s", e.ListenAddress)
+	log.Notice(nil, "Engine Now Listening at: %s", e.ListenAddress)
 	// err = http.ListenAndServe(e.ListenAddress, e)
 	return
 }

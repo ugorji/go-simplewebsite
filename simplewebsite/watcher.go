@@ -117,13 +117,13 @@ func (w *watcher) reload(s *Server) error {
 			if err == nil {
 				log.Debug(nil, "watch: Added path: %s to server: %s", fpath, s.name)
 			} else {
-				log.Error2(nil, err, "Watch: Error adding path: %s", fpath)
+				log.IfError(nil, err, "Watch: Error adding path: %s", fpath)
 			}
 		}
 		return nil
 	}
 	if err := filepath.Walk(filepath.Clean(s.BaseDir), walkFn); err != nil {
-		log.Error2(nil, err, "Watch: Error walking server basedir: %s", s.BaseDir)
+		log.IfError(nil, err, "Watch: Error walking server basedir: %s", s.BaseDir)
 	}
 
 	go func() {
