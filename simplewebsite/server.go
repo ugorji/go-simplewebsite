@@ -91,35 +91,7 @@ var (
 	uriRe = regexp.MustCompile(`(?i)[\w-.+]+:` + `(?://[\w-:@.\[\]]+/)?` + `(?:[\w-+@&;/]+)` + `(?:\?[\w-+&=;/]*)?` + `(?:#[\w-+&;?=/]*)?`)
 )
 
-var (
-	markdownExtensions int
-	markdownFlags      int
-	markdownTOCFlags   int
-)
-
 func init() {
-	// instead of using blackfriday.MarkdownCommon,
-	// configure precisely the markdown configuration I want.
-	markdownExtensions = 0 |
-		blackfriday.EXTENSION_NO_INTRA_EMPHASIS |
-		blackfriday.EXTENSION_TABLES |
-		blackfriday.EXTENSION_FENCED_CODE |
-		blackfriday.EXTENSION_AUTOLINK |
-		blackfriday.EXTENSION_STRIKETHROUGH |
-		blackfriday.EXTENSION_SPACE_HEADERS |
-		blackfriday.EXTENSION_HEADER_IDS |
-		blackfriday.EXTENSION_AUTO_HEADER_IDS |
-		0
-	markdownFlags = 0 |
-		blackfriday.HTML_USE_XHTML |
-		blackfriday.HTML_USE_SMARTYPANTS |
-		blackfriday.HTML_SMARTYPANTS_FRACTIONS |
-		blackfriday.HTML_SMARTYPANTS_LATEX_DASHES |
-		0
-	markdownTOCFlags = markdownFlags | blackfriday.HTML_TOC
-
-	// markdownRenderer = blackfriday.HtmlRenderer(commonHtmlFlags, "", "")
-
 	var err error
 	if mailMsgTmpl, err = template.New("").Parse(mailMsgTmplstr); err != nil {
 		panic(err)
@@ -215,7 +187,7 @@ func (s *Server) clone() *Server {
 	}
 }
 
-func (s *Server) runInit(es *engineCfg) (err error) {
+func (s *Server) runInit(es *engineCfg, ebasedir string) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -306,9 +278,11 @@ func (s *Server) runInit(es *engineCfg) (err error) {
 	if s.Permitted != "" {
 		s.permitted = regexp.MustCompile(s.Permitted)
 	}
-	if s.BaseDir, err = filepath.Abs(s.BaseDir); err != nil {
-		return
+
+	if !filepath.IsAbs(s.BaseDir) {
+		s.BaseDir = filepath.Join(ebasedir, s.BaseDir)
 	}
+
 	var zb []byte
 	zprops := filepath.Join(s.BaseDir, "_properties.json")
 	if fi, _ := os.Stat(zprops); fi != nil {
@@ -1443,15 +1417,16 @@ func (s *Server) pageMarkdownToHtml(htmlPath, mdPath string, sdir *Dir) (p *Page
 	if err != nil {
 		return
 	}
-	// zb = blackfriday.MarkdownCommon(zb)
+
 	// We cannot share a HtmlRenderer across calls, because it messes up things (errors, etc)
-	var r blackfriday.Renderer
+	rf := blackfriday.CommonHTMLFlags
 	if s.PageTOC {
-		r = blackfriday.HtmlRenderer(markdownTOCFlags, "", "")
-	} else {
-		r = blackfriday.HtmlRenderer(markdownFlags, "", "")
+		rf |= blackfriday.TOC
 	}
-	zb = blackfriday.Markdown(zb, r, markdownExtensions)
+	r := blackfriday.NewHTMLRenderer(blackfriday.HTMLRendererParameters{Flags: rf})
+	zb = blackfriday.Run(zb,
+		blackfriday.WithExtensions(blackfriday.CommonExtensions),
+		blackfriday.WithRenderer(r))
 	return s.pageBytesToHtml(htmlPath, zb, sdir)
 }
 

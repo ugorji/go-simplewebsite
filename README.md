@@ -254,7 +254,7 @@ NOTE:
 ## Exported Package API
 
 ```go
-func Main(args []string) (err error)
+func Main(cmdName string, args []string) (err error)
 type Dir struct{ ... }
 type DynamicPathFn func(s *Server, w http.ResponseWriter, r *http.Request) error
 type Engine struct{ ... }

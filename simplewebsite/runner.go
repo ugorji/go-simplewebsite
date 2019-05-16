@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -13,16 +14,16 @@ import (
 var log = logging.PkgLogger()
 
 type Runner struct {
-	Log            logging.Flags
-	Config         string
-	DynamicPathFns map[string]DynamicPathFn
-	Watch          bool // Deprecated
+	Log logging.Flags
+	engineInitCfg
 }
 
 func (r *Runner) Flags(flags *flag.FlagSet) {
 	r.Log.Flags(flags)
 	flags.StringVar(&r.Config, "c", "config.json", "Server Configuration")
-	flags.BoolVar(&r.Watch, "w", false, "(Deprecated and ignored) Watch/Incremental Reload on changes")
+	flags.StringVar(&r.BaseDir, "d", "", "Default Base Directory for Pages, Config, etc")
+	flags.StringVar(&r.BaseRuntimeDir, "r", "", "Default Base Directory for files created during runtime")
+	// flags.BoolVar(&r.Watch, "w", false, "(Deprecated and ignored) Watch/Incremental Reload on changes")
 }
 
 // Run will create an engine off the config file and possibly watch it for real-time uploads.
@@ -37,7 +38,7 @@ func (r *Runner) Run() (err error) {
 	// runtimeutil.P(">>>>>>>>>>> simplewebsite.Run ...: nil? %v \n", log == nil)
 	log.Notice(nil, "Starting up")
 
-	e, err := newEngine(r.Config, r.DynamicPathFns)
+	e, err := newEngine(r.engineInitCfg)
 	if err != nil {
 		return
 	}
@@ -99,14 +100,39 @@ func (r *Runner) Run() (err error) {
 	return
 }
 
-func Main(args []string) (err error) {
+func Main(cmdName string, args []string) (err error) {
+	flags := flag.NewFlagSet(cmdName, flag.ContinueOnError)
 	var r Runner
-
-	flags := flag.NewFlagSet("simplewebsite", flag.ContinueOnError)
 	r.Flags(flags)
-	if err = flags.Parse(args); err != nil {
+	err = flags.Parse(args)
+	if err != nil {
 		return
 	}
-
+	// clean up r.engineInitCfg
+	c := &r.engineInitCfg
+	if c.BaseDir == "" {
+		c.BaseDir = "."
+	}
+	if !filepath.IsAbs(c.BaseDir) {
+		c.BaseDir, err = filepath.Abs(c.BaseDir)
+		if err != nil {
+			return
+		}
+	}
+	if c.BaseRuntimeDir == "" {
+		c.BaseRuntimeDir = c.BaseDir
+	}
+	if !filepath.IsAbs(c.BaseRuntimeDir) {
+		c.BaseRuntimeDir, err = filepath.Abs(c.BaseRuntimeDir)
+		if err != nil {
+			return
+		}
+	}
+	if c.Config == "" {
+		c.Config = "config.json"
+	}
+	if !filepath.IsAbs(c.Config) {
+		c.Config = filepath.Clean(filepath.Join(c.BaseDir, c.Config))
+	}
 	return r.Run()
 }

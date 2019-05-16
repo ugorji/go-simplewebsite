@@ -22,6 +22,14 @@ import (
 
 type DynamicPathFn func(s *Server, w http.ResponseWriter, r *http.Request) error
 
+type engineInitCfg struct {
+	Config         string
+	BaseDir        string
+	BaseRuntimeDir string
+	DynamicPathFns map[string]DynamicPathFn
+	// Watch          bool // Deprecated
+}
+
 type engineCfg struct {
 	RuntimeDir        string
 	PidFile           string // write pid to this file
@@ -48,17 +56,26 @@ type engineState struct {
 }
 
 type Engine struct {
-	closed       bool
-	mu           sync.RWMutex
-	configFile   string
-	fatalErrChan chan error
+	// Note: All files/dir directly here are absolute paths
+
+	closed         bool
+	mu             sync.RWMutex
+	baseDir        string // default basedir for config, pages, etc
+	baseRuntimeDir string // default basedir for pid, access log, runtime data
+	configFile     string // config file
+	fatalErrChan   chan error
 	engineState
 }
 
-func newEngine(cfgFile string, dyn map[string]DynamicPathFn) (e *Engine, err error) {
+// func newEngine(cfgFile string, dyn map[string]DynamicPathFn) (e *Engine, err error) {
+func newEngine(c engineInitCfg) (e *Engine, err error) {
 	e = new(Engine)
-	e.configFile = filepath.Clean(cfgFile)
-	e.dynamicFns = dyn
+
+	e.configFile = c.Config
+	e.dynamicFns = c.DynamicPathFns
+	e.baseDir = c.BaseDir
+	e.baseRuntimeDir = c.BaseRuntimeDir
+
 	err = e.reload()
 	return
 }
@@ -71,9 +88,9 @@ func (e *Engine) reload() (err error) {
 		return
 	}
 
-	if e.configFile, err = filepath.Abs(e.configFile); err != nil {
-		return
-	}
+	// if e.configFile, err = filepath.Abs(e.configFile); err != nil {
+	// 	return
+	// }
 	f, err := os.Open(e.configFile)
 	if err != nil {
 		return
@@ -93,13 +110,23 @@ func (e *Engine) reload() (err error) {
 	if ecfg.ServerTemplate.SMTPAddr == "" {
 		ecfg.ServerTemplate.SMTPAddr = "127.0.0.0:25"
 	}
-
+	if ecfg.PidFile == "" {
+		ecfg.PidFile = "simplewebsite.pid"
+	}
 	// AccessLogFile must be explicitly configured
 	// if ecfg.AccessLogFile == "" {
-	// 	ecfg.AccessLogFile = filepath.Join(ecfg.RuntimeDir, "simplewebsite.access.log")
+	// 	ecfg.AccessLogFile = "simplewebsite.access.log")
 	// }
-	if ecfg.PidFile == "" {
-		ecfg.PidFile = filepath.Join(ecfg.RuntimeDir, "simplewebsite.pid")
+
+	// base RuntimeDir, PidFile and AccessLogFile off baseRuntimeDir
+	if !filepath.IsAbs(ecfg.RuntimeDir) {
+		ecfg.RuntimeDir = filepath.Join(e.baseRuntimeDir, ecfg.RuntimeDir)
+	}
+	if !filepath.IsAbs(ecfg.PidFile) {
+		ecfg.PidFile = filepath.Join(e.baseRuntimeDir, ecfg.PidFile)
+	}
+	if !filepath.IsAbs(ecfg.AccessLogFile) {
+		ecfg.AccessLogFile = filepath.Join(e.baseRuntimeDir, ecfg.AccessLogFile)
 	}
 
 	if err = os.MkdirAll(ecfg.RuntimeDir, os.ModePerm); err != nil {
@@ -130,7 +157,7 @@ func (e *Engine) reload() (err error) {
 	}
 
 	for i := range e.Servers {
-		if err = e.Servers[i].runInit(&e.engineCfg); err != nil {
+		if err = e.Servers[i].runInit(&e.engineCfg, e.baseDir); err != nil {
 			return
 		}
 	}
@@ -259,6 +286,17 @@ func (e *Engine) Close() (err error) {
 // }
 
 func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// // if a Connection.Close header, just return nothing
+	// if r.Header.Get("Connection") == "close" {
+	// 	log.Warning(nil, "Connection:close for Host: %s, Method: %v, URL: %v, RequestURI: %v, Headers: %v",
+	// 		r.Host, r.Method, r.URL, r.RequestURI, r.Header)
+
+	// 	return
+	// }
+
+	log.Debug(nil, "Engine received request: Host: %s, Method: %v, URL: %v, RequestURI: %v, Headers: %v",
+		r.Host, r.Method, r.URL, r.RequestURI, r.Header)
+
 	// no need to rlock/runlock, since reload first pauses and waits till zero
 	// e.mu.RLock()
 	// defer e.mu.RUnlock()
@@ -293,8 +331,8 @@ L1:
 	}
 
 	if svr == nil {
-		log.Error(nil, "No servers found for Host: %s, URL: %v, RequestURI: %v, Headers: %v",
-			r.Host, r.URL, r.RequestURI, r.Header)
+		log.Error(nil, "No servers found for Host: %s, Method: %v, URL: %v, RequestURI: %v, Headers: %v",
+			r.Host, r.Method, r.URL, r.RequestURI, r.Header)
 		http.Error(w, "No servers found for Host: "+r.Host, 500)
 		return
 	}

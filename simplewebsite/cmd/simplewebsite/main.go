@@ -9,7 +9,7 @@ import (
 
 func main() {
 	// runtime.GOMAXPROCS(runtime.NumCPU()) // done by default
-	if err := simplewebsite.Main(os.Args[1:]); err != nil {
+	if err := simplewebsite.Main(os.Args[0], os.Args[1:]); err != nil {
 		log.Fatalf("Main Error: %v\n", err)
 	}
 }
