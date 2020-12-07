@@ -1419,14 +1419,39 @@ func (s *Server) pageMarkdownToHtml(htmlPath, mdPath string, sdir *Dir) (p *Page
 	}
 
 	// We cannot share a HtmlRenderer across calls, because it messes up things (errors, etc)
-	rf := blackfriday.CommonHTMLFlags
+	//
+	// We determined the flags and extensions to use by looking at the
+	// blackfriday source for commonFlags and commonExtensions.
+
+	rf := 0 |
+		blackfriday.HTML_USE_XHTML |
+		blackfriday.HTML_USE_SMARTYPANTS |
+		blackfriday.HTML_SMARTYPANTS_FRACTIONS |
+		blackfriday.HTML_SMARTYPANTS_DASHES |
+		blackfriday.HTML_SMARTYPANTS_LATEX_DASHES
+
 	if s.PageTOC {
-		rf |= blackfriday.TOC
+		rf |= blackfriday.HTML_TOC
 	}
-	r := blackfriday.NewHTMLRenderer(blackfriday.HTMLRendererParameters{Flags: rf})
-	zb = blackfriday.Run(zb,
-		blackfriday.WithExtensions(blackfriday.CommonExtensions),
-		blackfriday.WithRenderer(r))
+
+	commonExtensions := 0 |
+		blackfriday.EXTENSION_NO_INTRA_EMPHASIS |
+		blackfriday.EXTENSION_TABLES |
+		blackfriday.EXTENSION_FENCED_CODE |
+		blackfriday.EXTENSION_AUTOLINK |
+		blackfriday.EXTENSION_STRIKETHROUGH |
+		blackfriday.EXTENSION_SPACE_HEADERS |
+		blackfriday.EXTENSION_HEADER_IDS |
+		blackfriday.EXTENSION_BACKSLASH_LINE_BREAK |
+		blackfriday.EXTENSION_DEFINITION_LISTS
+
+	r := blackfriday.HtmlRenderer(rf, "", "")
+	zb = blackfriday.MarkdownOptions(zb, r, blackfriday.Options{Extensions: commonExtensions})
+
+	// zb = blackfriday.Run(zb,
+	// 	blackfriday.WithExtensions(blackfriday.CommonExtensions),
+	// 	blackfriday.WithRenderer(r))
+
 	return s.pageBytesToHtml(htmlPath, zb, sdir)
 }
 
