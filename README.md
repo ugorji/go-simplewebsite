@@ -1,6 +1,6 @@
 # go-simplewebsite/simplewebsite
 
-This repository contains the `go-simplewebsite/simplewebsite` library (or command).
+This repository contains the `go-simplewebsite/simplewebsite` library.
 
 To install:
 
